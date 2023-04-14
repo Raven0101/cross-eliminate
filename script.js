@@ -1,22 +1,13 @@
-var table = document.getElementById('map-table')
+var tableContainer = document.getElementById('table-container')
 var x = 20
 var y = 20
 var leftPoint = []
 var rightPoint = []
 var topPoint = []
 var bottomPoint = []
-// const colors = [
-//     '#719FF9',
-//     '#71DDB2',
-//     '#F5C638',
-//     '#E97D64',
-//     '#E97D64',
-//     '#A084D1',
-//     '#A084D1',
-//     '#44A8A7',
-//     '#FDA7CB',
-//     '#96B5C7',
-// ]
+var custom = false
+var score = 0
+var clear = false
 const colors = [
   '#5B8FF9',
   '#5AD8A6',
@@ -30,8 +21,39 @@ const colors = [
   '#86AABE',
 ]
 
+function customize() {
+  let inputs = document.getElementById('costomize-div')
+  inputs.style.display = ''
+  custom = true
+}
+
+function play() {
+  if (custom) {
+    let xEle = document.getElementById('x-input')
+    let yEle = document.getElementById('y-input')
+    x = xEle && xEle.value ? Number(xEle.value) : x
+    y = yEle && yEle.value ? Number(yEle.value) : y
+  }
+  score = 0
+  let s = document.getElementById('score-div')
+  s.style.display = ''
+  setScore()
+  clearTable()
+  createTable()
+}
+
+function clearTable() {
+  if (tableContainer.childNodes.length != 0) {
+    let t = document.getElementById('map-table')
+    t.remove()
+  }
+}
+
 function createTable() {
   let cnt = 0
+  let table = document.createElement('table')
+  table.id = 'map-table'
+  tableContainer.appendChild(table)
   for (let i = 0; i < x; i++) {
     let row = document.createElement('tr')
     table.appendChild(row)
@@ -48,6 +70,12 @@ function createTable() {
       cnt += 1
     }
   }
+}
+
+function createCover() {
+  let cov = document.createElement('div')
+  cov.className = 'cover'
+  tableContainer.appendChild(cov)
 }
 
 function forEach2d(arr, func) {
@@ -96,11 +124,11 @@ function findY(id) {
   for (let i = minY; i < maxY + 1; i++) {
     ylist.push(i)
   }
-  console.log('ylist :>> ', ylist)
+  // console.log('ylist :>> ', ylist)
   let leftPoint = ylist[0] == 0 ? null : [col, ylist[0] - 1]
   let rightPoint =
     ylist[ylist.length - 1] == y - 1 ? null : [col, ylist[ylist.length - 1] + 1]
-  console.log('leftPoint, rightPoint:>> ', leftPoint, rightPoint)
+  // console.log('leftPoint, rightPoint:>> ', leftPoint, rightPoint)
   return [ylist, leftPoint, rightPoint]
 }
 
@@ -142,9 +170,9 @@ function findX(id) {
   return [xlist, topPoint, bottomPoint]
 }
 
-function findSameColor(points) {
+function findSameColor(points, dele = true) {
   pointColor = {}
-  console.log('points :>> ', points)
+  // console.log('points :>> ', points)
   points.forEach((p, index) => {
     if (!p) {
       return
@@ -159,14 +187,18 @@ function findSameColor(points) {
     }
   })
   // console.log('pointColor :>> ', pointColor)
-  Object.keys(pointColor).forEach((k) => {
-    if (pointColor[k].length > 1) {
-      // console.log('pointColor[k] :>> ', pointColor[k])
-      pointColor[k].forEach((i) => {
-        deleteColor(points[i])
-      })
-    }
-  })
+  if (dele) {
+    Object.keys(pointColor).forEach((k) => {
+      if (pointColor[k].length > 1) {
+        // console.log('pointColor[k] :>> ', pointColor[k])
+        pointColor[k].forEach((i) => {
+          deleteColor(points[i])
+        })
+      }
+    })
+  } else {
+    return pointColor
+  }
 }
 
 function onMouseover(e) {
@@ -206,13 +238,51 @@ function onMouseout(e) {
 
 function onClick(e) {
   findSameColor([leftPoint, rightPoint, topPoint, bottomPoint])
+  gameClear()
 }
 
 function deleteColor(ind) {
   let [i, j] = ind
   let e = getEleByIndex(i, j)
   e.style.background = ''
+  score += 1
+  setScore()
   // console.log('delete e :>> ', e)
+}
+
+function setScore() {
+  document.getElementById('score').innerText = score
+}
+
+function gameClear() {
+  var t = false
+
+  function checkOne(i, j) {
+    let id = getIdByIndex(i, j)
+    if (document.getElementById(id).style.background != '') {
+      return
+    }
+    let [, x1, x2] = findX(id)
+    let [, y1, y2] = findY(id)
+    let pointColor = findSameColor([x1, x2, y1, y2], false)
+    Object.keys(pointColor).forEach((k) => {
+      if (pointColor[k].length > 1) {
+        // console.log('continue :>> ')
+        t = true
+      }
+    })
+  }
+  forEachIndex(x, y, checkOne)
+  if (!t) {
+    clear = true
+  }
+  if (clear) {
+    setTimeout(() => {
+      alert(`CLEAR! \nYour score is: ${score}  \nClick OK to start a new game.`)
+      location.reload()
+    }, 1000)
+  }
+  // console.log('clear :>> ', clear)
 }
 
 function setColor(ele, ifSet) {
@@ -242,4 +312,15 @@ function getRandColor() {
 function getEleByIndex(m, n) {
   return document.getElementById(`${m * y + n}-${m}-${n}`)
 }
-createTable()
+
+function getIdByIndex(m, n) {
+  return `${m * y + n}-${m}-${n}`
+}
+
+function init() {
+  let customizeButton = document.getElementById('customize-button')
+  customizeButton.addEventListener('click', customize)
+  let startButton = document.getElementById('play-def')
+  startButton.addEventListener('click', play)
+}
+init()
