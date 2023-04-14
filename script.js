@@ -279,7 +279,7 @@ function gameClear() {
   if (clear) {
     setTimeout(() => {
       alert(`CLEAR! \nYour score is: ${score}  \nClick OK to start a new game.`)
-      location.reload()
+      play()
     }, 1000)
   }
   // console.log('clear :>> ', clear)
