@@ -35,6 +35,7 @@ function play() {
     y = yEle && yEle.value ? Number(yEle.value) : y
   }
   score = 0
+  clear = false
   let s = document.getElementById('score-div')
   s.style.display = ''
   setScore()

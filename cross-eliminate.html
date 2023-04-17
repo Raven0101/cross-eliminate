@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>cross eliminate</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>CROSS ELIMINATE</h1>
+      <div class="hints">
+        <button id="play-def">PLAY!</button>
+        <div id="customize">
+          <span>or </span><span id="customize-button">customize size</span>
+        </div>
+        <div id="costomize-div" style="display: none">
+          <span class="customize-span">height: </span
+          ><input class="customize-input" id="x-input" /><span
+            class="customize-span"
+          >
+            width: </span
+          ><input class="customize-input" id="y-input" />
+        </div>
+        <div id="score-div" style="display: none">
+          score:<span id="score"></span>
+        </div>
+      </div>
+      <div id="table-container"></div>
+      <!-- <table id="map-table"></table> -->
+    </div>
+    <script type="text/javascript">
+      var tableContainer = document.getElementById('table-container')
+      var x = 20
+      var y = 20
+      var leftPoint = []
+      var rightPoint = []
+      var topPoint = []
+      var bottomPoint = []
+      var custom = false
+      var score = 0
+      var clear = false
+      const colors = [
+        '#5B8FF9',
+        '#5AD8A6',
+        '#F6BD16',
+        '#E8684A',
+        '#6DC8EC',
+        '#9270CA',
+        '#FF9D4D',
+        '#269A99',
+        '#FF99C3',
+        '#86AABE',
+      ]
+
+      function customize() {
+        // 自定义棋盘大小
+        let inputs = document.getElementById('costomize-div')
+        inputs.style.display = ''
+        custom = true
+      }
+
+      function play() {
+        // 开始游戏，初始化
+        if (custom) {
+          let xEle = document.getElementById('x-input')
+          let yEle = document.getElementById('y-input')
+          x = xEle && xEle.value ? Number(xEle.value) : x
+          y = yEle && yEle.value ? Number(yEle.value) : y
+        }
+        score = 0
+        clear = false
+        let s = document.getElementById('score-div')
+        s.style.display = ''
+        setScore()
+        clearTable()
+        createTable()
+      }
+
+      function clearTable() {
+        // 结束游戏后，清空棋盘
+        if (tableContainer.childNodes.length != 0) {
+          let t = document.getElementById('map-table')
+          t.remove()
+        }
+      }
+
+      function createTable() {
+        // 创建棋盘：利用table的行&列，随机有颜色or无颜色，随机从颜色列表中取色
+        let cnt = 0
+        let table = document.createElement('table')
+        table.id = 'map-table'
+        tableContainer.appendChild(table)
+        for (let i = 0; i < x; i++) {
+          let row = document.createElement('tr')
+          table.appendChild(row)
+          for (let j = 0; j < y; j++) {
+            let d = document.createElement('td')
+            // id命名规则：第n个td-x坐标-y坐标
+            d.id = `${cnt}-${i}-${j}`
+            d.classList = 'table-td'
+            d.style.background = Math.random() < 0.5 ? getRandColor() : ''
+            d.addEventListener('mouseover', onMouseover)
+            d.addEventListener('mouseout', onMouseout)
+            d.addEventListener('click', onClick)
+            row.appendChild(d)
+            cnt += 1
+          }
+        }
+      }
+
+      function forEach2d(arr, func) {
+        // 遍历2d数组
+        arr.forEach((row) => {
+          row.forEach((item) => {
+            func(item)
+          })
+        })
+      }
+
+      function forEachIndex(h, w, func) {
+        // 遍历指定index范围内元素
+        for (let i = 0; i < h; i++) {
+          for (let j = 0; j < w; j++) {
+            func(i, j)
+          }
+        }
+      }
+
+      function findY(id) {
+        // 寻找点击格子上下第一个有颜色的格子
+        let t = false
+        let minY //最上
+        let maxY //最下
+        let [num, col, cury] = id.split('-').map((item) => Number(item))
+        while (!t && cury >= 0) {
+          t =
+            document.getElementById(`${col * y + cury}-${col}-${cury}`).style
+              .background != ''
+          cury -= 1
+        }
+        minY = cury < 0 && !t ? 0 : cury + 2
+        t = false
+        cury = id.split('-').map((item) => Number(item))[2] + 1
+        while (!t && cury < y) {
+          t =
+            document.getElementById(`${col * y + cury}-${col}-${cury}`).style
+              .background != ''
+          cury += 1
+        }
+        maxY = cury >= y && !t ? y - 1 : cury - 2
+        let ylist = [] //最上和最下中间的y坐标
+        for (let i = minY; i < maxY + 1; i++) {
+          ylist.push(i)
+        }
+        let leftPoint = ylist[0] == 0 ? null : [col, ylist[0] - 1]
+        let rightPoint =
+          ylist[ylist.length - 1] == y - 1
+            ? null
+            : [col, ylist[ylist.length - 1] + 1]
+        return [ylist, leftPoint, rightPoint]
+      }
+
+      function findX(id) {
+        // 寻找点击格子左右第一个有颜色的格子
+        let t = false
+        let minX //最左
+        let maxX //最右
+        let [num, curx, row] = id.split('-').map((item) => Number(item))
+        while (!t && curx >= 0) {
+          t =
+            document.getElementById(`${curx * y + row}-${curx}-${row}`).style
+              .background != ''
+          curx -= 1
+        }
+        minX = curx < 0 && !t ? 0 : curx + 2
+        t = false
+        curx = id.split('-').map((item) => Number(item))[1]
+        while (!t && curx < x) {
+          t =
+            document.getElementById(`${curx * y + row}-${curx}-${row}`).style
+              .background != ''
+          curx += 1
+        }
+        maxX = curx >= x && !t ? x - 1 : curx - 2
+        let xlist = [] //最上和最下中间的x坐标
+        for (let i = minX; i < maxX + 1; i++) {
+          xlist.push(i)
+        }
+        let topPoint = xlist[0] == 0 ? null : [xlist[0] - 1, row]
+        let bottomPoint =
+          xlist[xlist.length - 1] == x - 1
+            ? null
+            : [xlist[xlist.length - 1] + 1, row]
+        return [xlist, topPoint, bottomPoint]
+      }
+
+      function findSameColor(points, dele = true) {
+        // 寻找上下左右四个点里相同颜色的点，并将相同颜色的点消除
+        pointColor = {}
+        points.forEach((p, index) => {
+          if (!p) {
+            return
+          }
+          p = p.map((v) => Number(v))
+          let e = document.getElementById(`${p[0] * y + p[1]}-${p[0]}-${p[1]}`)
+          let c = e.style.background
+          if (!Object.keys(pointColor).includes(c)) {
+            pointColor[c] = [index]
+          } else {
+            pointColor[c].push(index)
+          }
+        })
+        if (dele) {
+          Object.keys(pointColor).forEach((k) => {
+            if (pointColor[k].length > 1) {
+              pointColor[k].forEach((i) => {
+                deleteColor(points[i])
+              })
+            }
+          })
+        } else {
+          return pointColor
+        }
+      }
+
+      function onMouseover(e) {
+        // 鼠标悬浮事件：高亮十字
+        let target = e.target.id.split('-').map((v) => Number(v))
+        let xlist = []
+        let ylist = []
+
+        if (e.target.style.background == '') {
+          ;[ylist, leftPoint, rightPoint] = findY(e.target.id)
+          ;[xlist, topPoint, bottomPoint] = findX(e.target.id)
+          ylist.forEach((yind) => {
+            if (yind != target[2]) {
+              ele = document.getElementById(
+                `${target[1] * y + yind}-${target[1]}-${yind}`
+              )
+              setColor(ele, true)
+            }
+          })
+          xlist.forEach((xind) => {
+            if (xind != target[1]) {
+              ele = document.getElementById(
+                `${xind * y + target[2]}-${xind}-${target[2]}`
+              )
+              setColor(ele, true)
+            }
+          })
+        }
+      }
+
+      function onMouseout(e) {
+        // 鼠标移出事件：取消高亮
+        let target = e.target.id.split('-')
+        forEachIndex(x, y, (i, j) => {
+          let ele = document.getElementById(`${i * y + j}-${i}-${j}`)
+          setColor(ele, false)
+        })
+      }
+
+      function onClick(e) {
+        // 鼠标点击事件：消除颜色&判定游戏是否结束
+        findSameColor([leftPoint, rightPoint, topPoint, bottomPoint])
+        gameClear()
+      }
+
+      function deleteColor(ind) {
+        // 消除颜色（置为默认颜色
+        let [i, j] = ind
+        let e = getEleByIndex(i, j)
+        e.style.background = ''
+        score += 1
+        setScore()
+      }
+
+      function setScore() {
+        // 计分
+        document.getElementById('score').innerText = score
+      }
+
+      function gameClear() {
+        // 游戏结束判定
+        var t = false
+
+        function checkOne(i, j) {
+          // 判定某空格子是否有可消除点
+          let id = getIdByIndex(i, j)
+          if (document.getElementById(id).style.background != '') {
+            return
+          }
+          let [, x1, x2] = findX(id)
+          let [, y1, y2] = findY(id)
+          let pointColor = findSameColor([x1, x2, y1, y2], false)
+          Object.keys(pointColor).forEach((k) => {
+            if (pointColor[k].length > 1) {
+              t = true
+            }
+          })
+        }
+        forEachIndex(x, y, checkOne)
+        if (!t) {
+          clear = true
+        }
+        // 全部空格子都不可消除则游戏结束
+        if (clear) {
+          // 延时提示游戏结束（保证异步事件结束
+          // 点击确定开始新游戏
+          setTimeout(() => {
+            alert(
+              `CLEAR! \nYour score is: ${score}  \nClick OK to start a new game.`
+            )
+            play()
+          }, 1000)
+        }
+      }
+
+      function setColor(ele, ifSet) {
+        // 设定颜色变化：ele需设定的元素；ifSet：设定颜色or取消颜色
+        let classes = ele.className.split(' ')
+        if (ele.style.color) {
+          return
+        }
+        if (classes.includes('table-td-highlight')) {
+          if (!ifSet) {
+            let i = classes.indexOf('table-td-highlight')
+            classes.splice(i, 1)
+            ele.className = classes.join(' ')
+          }
+        } else {
+          if (ifSet) {
+            ele.className += ' table-td-highlight'
+          }
+        }
+      }
+
+      function getRandColor() {
+        // 获取随机颜色
+        let l = colors.length
+        let num = Math.floor(Math.random() * l)
+        return colors[num]
+      }
+
+      function getEleByIndex(m, n) {
+        // 通过坐标获取td元素
+        return document.getElementById(`${m * y + n}-${m}-${n}`)
+      }
+
+      function getIdByIndex(m, n) {
+        // 通过坐标获取td元素id
+        return `${m * y + n}-${m}-${n}`
+      }
+
+      function init() {
+        // 初始化：设定按钮事件
+        let customizeButton = document.getElementById('customize-button')
+        customizeButton.addEventListener('click', customize)
+        let startButton = document.getElementById('play-def')
+        startButton.addEventListener('click', play)
+      }
+      init()
+    </script>
+    <style>
+      .container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .hints {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #play-def {
+        width: 90px;
+        font-size: 20px;
+        line-height: 1.5;
+        background: #eeeeee;
+        border: 1px solid #dddddd;
+        border-radius: 4px;
+        /* box-shadow: 0px 2px 8px 1px rgba(167, 167, 167, 0.5); */
+        transition: all 0.2s;
+      }
+
+      #play-def:hover {
+        background: #ffffff;
+      }
+
+      #customize {
+        font-size: 12px;
+        margin: 10px;
+      }
+
+      #customize-button {
+        color: rgb(0, 104, 255);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      .customize-span {
+        font-size: 12px;
+      }
+
+      .customize-input {
+        width: 20px;
+      }
+
+      #score-div {
+        margin: 10px;
+      }
+
+      .cover {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: red;
+      }
+
+      .table-td {
+        height: 1rem;
+        width: 1rem;
+        border: 1px solid #dddddd;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+        background: #ffffff;
+      }
+
+      .table-td:hover {
+        background: #dddddd;
+        border-radius: 0.5rem;
+      }
+
+      .table-td-highlight {
+        background: #dddddd;
+        border-radius: 0.5rem;
+      }
+    </style>
+  </body>
+</html>
